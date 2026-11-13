@@ -5,6 +5,8 @@ from collections import OrderedDict
 
 from ..i18n import _
 from ..fsutil import pe_company
+from ..knowledge import STORAGE_DRIVERS
+from ..actions import disable_drivers
 from .drivers import resolve_image
 from .events import SAFE_MODE_HOWTO
 
@@ -38,6 +40,7 @@ def third_party_drivers(ctx, services):
             continue
         m = re.match(r"(?i)program files(?: \(x86\))?\\([^\\]+)\\", rel)
         rows.append({"name": s["name"], "group": s["group"] or "", "start": s["start"], "file": rel,
+                     "device": isinstance(disp, str) and disp.lower().startswith("@oem"),
                      "company": company or "", "vendor": vendor_name(company) if company else _("unknown vendor"),
                      "product": m.group(1) if m else ""})
         ctx.check_cancel()
@@ -93,3 +96,46 @@ def analyze(ctx):
         sm.evidence.append(head)
         for v, rs in _by_vendor(suspects).values():
             sm.evidence.append(f"  {_label(v, rs)}: " + ", ".join(r["name"] for r in rs))
+    picked, filters = switch_off_set(rows, suspects, class_filters(ctx))
+    if picked:
+        labels = {r["name"]: _label(r["vendor"], [r]) for r in picked}
+        sm.actions.append(disable_drivers(getattr(ctx, "current_cs_name", "ControlSet001"),
+                                          [(r["name"], labels[r["name"]]) for r in picked], filters))
+        sm.fix.insert(0, _("Or let BootRepair switch these drivers off with “Repair automatically”: Windows then "
+                           "starts without them, and the programs they belong to can be uninstalled properly. Hardware "
+                           "and storage drivers are not touched, and “Undo last repair” switches them back on."))
+
+
+def class_filters(ctx):
+    """[(class_guid, class_name, value, filter)] from Control\\Class of the current control set."""
+    cs = getattr(ctx, "current_cs", None)
+    cls = cs.subkey("Control").subkey("Class") if cs is not None and cs.subkey("Control") is not None else None
+    out = []
+    if cls is None:
+        return out
+    for k in cls.subkeys():
+        for value in ("UpperFilters", "LowerFilters"):
+            v = k.get(value)
+            for f in ([v] if isinstance(v, str) else v or []):
+                if f:
+                    out.append((k.name, k.get("Class") or k.name, value, f))
+    return out
+
+
+def switch_off_set(rows, suspects, filters):
+    """Drivers to switch off when only Safe Mode works: the suspects, plus the other non-hardware drivers of the same
+    vendors (and vendor-less disk/volume filters), never hardware or storage drivers. Returns (rows, filter entries)."""
+    storage = {n.lower() for v in STORAGE_DRIVERS.values() for n in v}
+    vendors = {r["vendor"].lower() for r in suspects}
+    in_filters = {f.lower() for *__, f in filters}
+    picked = []
+    for r in rows:
+        name = r["name"].lower()
+        if r.get("device") or name in storage:
+            continue
+        unknown = not r.get("company")
+        if r in suspects or r["vendor"].lower() in vendors or (unknown and suspects and name in in_filters):
+            picked.append(r)
+    names = {r["name"].lower() for r in picked}
+    entries = [(g, value, f, cname) for g, cname, value, f in filters if f.lower() in names]
+    return picked, entries

@@ -2009,4 +2009,18 @@ MESSAGES = {
         'Entfernen Sie im abgesicherten Modus eines davon mit dem Entfernungswerkzeug des Herstellers, das auch dort funktioniert (Avast: „Avast Uninstall Utility“, Bitdefender: „Bitdefender Uninstall Tool“). Behalten Sie ein Produkt – oder keines: Dann schaltet Windows den Microsoft Defender wieder ein.',
     'unknown vendor':
         'unbekannter Hersteller',
+    'HKLM\\SYSTEM\\{cs}\\Services\\{name}: Start -> 4 (switched off)  [{label}]':
+        'HKLM\\SYSTEM\\{cs}\\Services\\{name}: Start -> 4 (ausgeschaltet)  [{label}]',
+    "HKLM\\SYSTEM\\{cs}\\Control\\Class\\{g}\\{v}: remove '{f}' ({cn})":
+        "HKLM\\SYSTEM\\{cs}\\Control\\Class\\{g}\\{v}: '{f}' entfernen ({cn})",
+    'Switch off {n} third-party startup drivers':
+        '{n} Starttreiber von Drittanbietern ausschalten',
+    'Or let BootRepair switch these drivers off with “Repair automatically”: Windows then starts without them, and the programs they belong to can be uninstalled properly. Hardware and storage drivers are not touched, and “Undo last repair” switches them back on.':
+        'Oder lassen Sie BootRepair diese Treiber mit „Automatisch reparieren“ ausschalten: Windows startet dann ohne sie, und die zugehörigen Programme lassen sich sauber deinstallieren. Hardware- und Speichertreiber bleiben unberührt, und „Letzte Reparatur rückgängig machen“ schaltet sie wieder ein.',
+    "refusing to switch off Windows drivers: {', '.join(bad)}":
+        "Windows-Treiber werden nicht ausgeschaltet: {', '.join(bad)}",
+    'all drivers were already switched off':
+        'alle Treiber waren bereits ausgeschaltet',
+    'invalid filter entry':
+        'ungültiger Filtereintrag',
 }

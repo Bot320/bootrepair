@@ -92,6 +92,12 @@ class FixContext:
         return HivePatcher(p)
 
 
+# Drivers Windows cannot start without; never switched off by disable_drivers.
+PROTECTED_DRIVERS = {"disk", "partmgr", "volmgr", "volmgrx", "volume", "volsnap", "mountmgr", "ntfs", "fltmgr",
+                     "ksecdd", "cng", "acpi", "pci", "wdf01000", "classpnp", "fvevol", "rdyboost", "iorate",
+                     "ehstorclass", "storport", "spaceport", "msisadrv", "vdrvroot", "intelpep", "clfs"}
+
+
 def _cs(params):
     cs = params.get("cs") or "ControlSet001"
     if not re.fullmatch(r"ControlSet\d{3}", cs):
@@ -125,6 +131,39 @@ def fx_remove_class_filter(c, p):
     if len(new) == len(cur):
         return [_(t"'{p['filter']}' is no longer in {p['value']} - nothing to do")]
     hp.set_multi_sz(key, p["value"], new)
+    return hp.commit()
+
+
+def fx_disable_drivers(c, p):
+    from .knowledge import STORAGE_DRIVERS
+    cs = _cs(p)
+    protected = {n.lower() for v in STORAGE_DRIVERS.values() for n in v} | PROTECTED_DRIVERS
+    names = [str(n) for n in p.get("services", [])]
+    bad = [n for n in names if n.lower() in protected or not re.fullmatch(r"[\w.\- ]{1,128}", n)]
+    if bad:
+        raise FixError(_(t"refusing to switch off Windows drivers: {', '.join(bad)}"))
+    hp = c.patch_hive("win", "Windows\\System32\\config\\SYSTEM")
+    done = 0
+    for n in names:
+        key = f"{cs}\\Services\\{n}"
+        if hp.hive.open(key) is not None and hp.get(key, "Start") != 4:
+            hp.set_dword(key, "Start", 4)
+            done += 1
+    removed = 0
+    lower = {n.lower() for n in names}
+    for f in p.get("filters", []):
+        if f["filter"].lower() not in lower or f["value"] not in ("UpperFilters", "LowerFilters") \
+                or not re.fullmatch(r"\{[0-9A-Fa-f-]{36}\}", f["class_guid"]):
+            raise FixError(_("invalid filter entry"))
+        key = f"{cs}\\Control\\Class\\{f['class_guid']}"
+        cur = hp.get(key, f["value"]) or []
+        cur = [cur] if isinstance(cur, str) else cur
+        new = [x for x in cur if x.lower() != f["filter"].lower()]
+        if len(new) != len(cur):
+            hp.set_multi_sz(key, f["value"], new)
+            removed += 1
+    if not done and not removed:
+        return [_(t"all drivers were already switched off")]
     return hp.commit()
 
 
@@ -424,6 +463,7 @@ def fx_nvram_delete(c, p):
 FIXERS = {
     "set_service_start": fx_set_service_start,
     "remove_class_filter": fx_remove_class_filter,
+    "disable_drivers": fx_disable_drivers,
     "clear_pending_renames": fx_clear_pending_renames,
     "disable_verifier": fx_disable_verifier,
     "reg_set_dword": fx_reg_set_dword,

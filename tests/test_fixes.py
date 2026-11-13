@@ -37,6 +37,14 @@ def all_actions(report, skip=("nvram",)):
     return out
 
 
+def ci_path(root, rel):
+    """Case-insensitive path lookup (NTFS names keep whatever case Windows used)."""
+    p = Path(root)
+    for part in rel.split("/"):
+        p = next((c for c in p.iterdir() if c.name.lower() == part.lower()), p / part)
+    return p
+
+
 def crit(report):
     return sorted(f["title"] for f in report["findings"] if f["severity"] == "critical")
 
@@ -73,6 +81,30 @@ class FixtureRepairTests(unittest.TestCase):
             self.assertEqual((sha(system), sha(hal)), orig)
             self.assertEqual(crit(analyse(disks, disk, target, mounts)), crit(before))
 
+    def test_disable_drivers_and_undo(self):
+        from bootrepair import actions
+        from bootrepair.parsers.regf import Hive
+        with tempfile.TemporaryDirectory() as t:
+            disks, disk, target, mounts = make_system(t, broken=True)
+            system = Path(t, "win/Windows/System32/config/SYSTEM")
+            orig = sha(system)
+            boot = next(p for p in disk["partitions"] if p["is_esp"])
+            disk_class = "{4d36e967-e325-11ce-bfc1-08002be10318}"
+            a = actions.disable_drivers("ControlSet001", [("EventLog", "x"), ("ghostflt", "y")],
+                                        [(disk_class, "UpperFilters", "ghostflt", "DiskDrive")])
+            res = fixes.apply(target["path"], boot["path"], [a], mounts=mounts, disks=disks,
+                              backup_root=Path(t, "backups"))
+            self.assertTrue(all(r["ok"] for r in res["results"]), res)
+            h = Hive.from_file(system)
+            self.assertEqual(h.get("ControlSet001\\Services\\EventLog", "Start"), 4)
+            self.assertEqual(h.get(f"ControlSet001\\Control\\Class\\{disk_class}", "UpperFilters"), ["partmgr"])
+            fixes.undo(res["backup"], mounts=mounts, disks=disks)
+            self.assertEqual(sha(system), orig)
+            bad = actions.disable_drivers("ControlSet001", [("stornvme", "x")], [])
+            res = fixes.apply(target["path"], boot["path"], [bad], mounts=mounts, disks=disks,
+                              backup_root=Path(t, "backups2"))
+            self.assertFalse(res["results"][0]["ok"])
+
     def test_refuses_hibernated_volume(self):
         with tempfile.TemporaryDirectory() as t:
             disks, disk, target, mounts = make_system(t, broken=True)
@@ -107,8 +139,8 @@ class RealBundleRepairTests(unittest.TestCase):
             acts = all_actions(before)
             self.assertTrue(acts)
             boot = next(p for d in disks for p in d["partitions"] if p["name"] == before["boot_partition"]["name"])
-            watched = [Path(t, "fs", f"fs-{target['name']}", "Windows/System32/config/SYSTEM"),
-                       Path(t, "fs", f"fs-{boot['name']}", "EFI/Microsoft/Boot/BCD")]
+            watched = [ci_path(Path(t, "fs", f"fs-{target['name']}"), "Windows/System32/config/SYSTEM"),
+                       ci_path(Path(t, "fs", f"fs-{boot['name']}"), "EFI/Microsoft/Boot/BCD")]
             orig = [sha(p) for p in watched]
             res = fixes.apply(target["path"], boot["path"], acts, mounts=mounts, disks=disks,
                               backup_root=Path(t, "backups"))

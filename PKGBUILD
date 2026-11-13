@@ -1,6 +1,6 @@
 # Build & install from a checkout of the repository:  makepkg -si
 pkgname=bootrepair
-pkgver=0.3.1
+pkgver=0.3.2
 pkgrel=1
 pkgdesc="Diagnose and repair Windows installations that do not start (GTK4/libadwaita)"
 arch=('any')

@@ -41,6 +41,16 @@ def remove_class_filter(cs, class_guid, value, flt, class_name):
                   cs=cs, class_guid=class_guid, value=value, filter=flt)
 
 
+def disable_drivers(cs, drivers, filters):
+    """drivers: [(service, label)]; filters: [(class_guid, value, filter, class_name)] to remove the drivers from."""
+    ch = [_(t"HKLM\\SYSTEM\\{cs}\\Services\\{name}: Start -> 4 (switched off)  [{label}]") for name, label in drivers]
+    ch += [_(t"HKLM\\SYSTEM\\{cs}\\Control\\Class\\{g}\\{v}: remove '{f}' ({cn})") for g, v, f, cn in filters]
+    n = len(drivers)
+    return action("disable_drivers", _(t"Switch off {n} third-party startup drivers"), ch, "medium", cs=cs,
+                  services=[d for d, __ in drivers],
+                  filters=[{"class_guid": g, "value": v, "filter": f} for g, v, f, __ in filters])
+
+
 def clear_pending_renames(cs):
     return action("clear_pending_renames", _(t"Cancel pending file replace operations"),
                   [_(t"HKLM\\SYSTEM\\{cs}\\Control\\Session Manager\\PendingFileRenameOperations(2): deleted")],
