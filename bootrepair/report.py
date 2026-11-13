@@ -110,7 +110,7 @@ def to_text(r):
                          + (f"  ({f['stopcode']})" if f.get("stopcode") else ""))
             if f["why"]:
                 lines.append("   " + f["why"])
-            for e in f["evidence"][:8]:
+            for e in f["evidence"][:12]:
                 lines.append(f"     · {e}")
             if f["fix"] and sev != "info":
                 lines.append("   " + _("How to fix by hand") + ":")

@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 from datetime import timedelta
 
-from ..i18n import _
+from ..i18n import _, N_
 from ..knowledge import WINRE, LINUX, CHKDSK, BACKUP_FIRST
 from ..knowledge import EVENTS, BOOT_OK_EVENTS, SHUTDOWN_OK_EVENTS, bugcheck_text, win32_error, STORAGE_DRIVERS
 from ..parsers.evtx import Evtx, EvtxError
@@ -127,6 +127,8 @@ def analyze(ctx):
     kg = [e for e in boots if e.provider == "Microsoft-Windows-Kernel-General" and e.data.get("QfeVersion")]
     ctx.last_boot_version = (kg[-1].data.get("BuildVersion"), kg[-1].data.get("QfeVersion")) if kg else None
     ctx.log_last_time = last
+    starts = [e for e in boots if (e.provider, e.event_id) == ("Microsoft-Windows-Kernel-General", 12) and e.time]
+    _safe_mode(ctx, starts, [e for e in relevant if (e.provider, e.event_id) == (SCM, 7026) and e.time])
 
     timeline = []
     for e in reversed(relevant):
@@ -206,6 +208,65 @@ def analyze(ctx):
         ctx.add(sev, stage, title + (_(t" - {n}x") if n > 1 else ""),
                 why + _(t" Last occurrence: {newest.time:%Y-%m-%d %H:%M} UTC."),
                 lines, _fix(k, ctx), source=SRC, priority=prio)
+
+
+BOOT_MODES = {"0": N_("normal start"), "1": N_("Safe Mode"), "2": N_("Safe Mode with networking")}
+SAFE_MODE_HOWTO = N_("To start Safe Mode: on the Automatic Repair screen choose Advanced options → Troubleshoot → "
+                     "Advanced options → Startup Settings → Restart, then press 4 (Safe Mode) or 5 (Safe Mode with "
+                     "networking).")
+SEE_THE_ERROR = N_("To see what goes wrong in a normal start, open Startup Settings again and press 9 (“Disable "
+                   "automatic restart after failure”): a blue screen then stays on screen with its stop code. "
+                   "Pressing 2 (“Enable boot logging”) instead makes Windows write C:\\Windows\\ntbtlog.txt, "
+                   "which the next BootRepair analysis reads to show the last driver that loaded.")
+
+
+def safe_mode_streak(starts):
+    """Starts recorded after the last normal one, if all of them were Safe Mode: (last normal start or None, [safe])."""
+    streak = []
+    for e in reversed(starts):
+        if str(e.data.get("BootMode", "0")) in ("1", "2"):
+            streak.append(e)
+        else:
+            return e, streak[::-1]
+    return None, streak[::-1]
+
+
+def skipped_drivers(start, starts, failed_events):
+    """Names from the SCM 7026 events logged during the session that began with `start`."""
+    later = [e.time for e in starts if e.time > start.time]
+    end = min(later) if later else None
+    names = set()
+    for e in failed_events:
+        if e.time >= start.time and (end is None or e.time < end):
+            names.update(x.strip().lower() for x in re.split(r"[\r\n,]+", e.data.get("param1", "")) if x.strip())
+    return names
+
+
+def _safe_mode(ctx, starts, failed_events=()):
+    normal, streak = safe_mode_streak(starts)
+    if not streak:
+        return
+    skipped = set()
+    for e in streak:
+        skipped |= skipped_drivers(e, starts, failed_events)
+    ctx.safe_mode_skipped = skipped
+    lines = [f"{e.time:%Y-%m-%d %H:%M} UTC  {_(BOOT_MODES[str(e.data.get('BootMode'))])}" for e in streak[::-1][:6]]
+    if normal is not None:
+        lines.append(f"{normal.time:%Y-%m-%d %H:%M} UTC  {_(BOOT_MODES['0'])}")
+        why = _(t"Since the last normal start on {normal.time:%Y-%m-%d %H:%M} UTC, Windows has only started in Safe "
+                t"Mode. ")
+    else:
+        why = _("The event log only records Safe Mode starts. ")
+    why += _("Safe Mode loads only the drivers Windows itself needs. If Safe Mode works but a normal start fails, a "
+             "third-party driver or program that loads at startup is the usual cause: antivirus software, backup and "
+             "disk tools, or “PC repair” and tuning programs.")
+    ctx.safe_mode_finding = ctx.add(
+        "warning", "kernel", _("Windows last started only in Safe Mode"), why, lines,
+        [_(SAFE_MODE_HOWTO),
+         _("In Safe Mode, uninstall what was installed or updated shortly before the problem began, above all "
+           "security software, backup or disk tools and “PC repair” or tuning programs. Then restart normally."),
+         _(SEE_THE_ERROR)],
+        source=SRC, priority=14)
 
 
 def _fix(k, ctx):

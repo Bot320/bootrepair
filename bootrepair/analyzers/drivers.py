@@ -71,6 +71,7 @@ def analyze(ctx):
         return
     csname = getattr(ctx, "current_cs_name", "ControlSet001")
     services = _services(cs)
+    ctx.services = services
     ctx.evidence["services_count"] = len(services)
     file_cache = {}
 

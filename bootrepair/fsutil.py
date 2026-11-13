@@ -83,6 +83,30 @@ def status_word(st):
     return _(STATUS_WORDS[st]) if st in STATUS_WORDS else st
 
 
+def pe_company(path, tail=2 * 1024 * 1024):
+    """CompanyName from a PE file's version resource (None if absent). The resource section is at the end of
+    almost every driver, so only the last `tail` bytes are read."""
+    try:
+        with open(path, "rb") as f:
+            size = f.seek(0, os.SEEK_END)
+            f.seek(max(0, size - tail))
+            d = f.read()
+    except OSError:
+        return None
+    key = "CompanyName".encode("utf-16-le") + b"\0\0"
+    i = d.rfind(key)
+    if i < 0:
+        return None
+    j = i + len(key)
+    while j < i + 64 and d[j:j + 2] == b"\0\0":
+        j += 2
+    end = j
+    while end + 1 < len(d) and d[end:end + 2] != b"\0\0":
+        end += 2
+    name = d[j:end].decode("utf-16-le", "replace").strip()
+    return name or None
+
+
 def human_size(n):
     n = float(n)
     for unit in ("B", "KiB", "MiB", "GiB", "TiB"):

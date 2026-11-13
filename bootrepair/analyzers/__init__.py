@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from .. import __version__
 from ..i18n import _, N_
-from . import disk, volume, bootpart, bcdcheck, files, registry, drivers, servicing, crashes, events, extras, verdict
+from . import disk, volume, bootpart, bcdcheck, files, registry, drivers, servicing, crashes, events, thirdparty, extras, verdict
 from .context import Context, Cancelled
 
 STEPS = [
@@ -19,6 +19,7 @@ STEPS = [
     ("servicing", N_("Pending updates & setup state"), servicing.analyze),
     ("crashes", N_("Crash dumps & Startup Repair logs"), crashes.analyze),
     ("events", N_("System event log"), events.analyze),
+    ("thirdparty", N_("Third-party drivers & security software"), thirdparty.analyze),
     ("extras", N_("Recovery options"), extras.analyze),
 ]
 

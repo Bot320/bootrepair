@@ -1969,4 +1969,44 @@ MESSAGES = {
         'efibootmgr ist fehlgeschlagen: {(r.stderr or r.stdout).strip()}',
     'there is no repair backup to undo':
         'Es gibt keine Reparatur-Sicherung, die rückgängig gemacht werden kann',
+    'Third-party drivers & security software':
+        'Treiber von Drittanbietern & Sicherheitssoftware',
+    " It means that a Windows start file that was replaced recently (by an update, an update rollback or a repair) did not pass Windows' integrity check. This often follows an update or rollback interrupted by a crash or power loss. Startup Repair also reports it when a third-party driver stops the start, so check the other findings in this report as well.":
+        ' Das heißt: Eine Startdatei von Windows, die kürzlich ersetzt wurde (durch ein Update, das Zurücknehmen eines Updates oder eine Reparatur), hat die Integritätsprüfung von Windows nicht bestanden. Das folgt oft auf ein Update oder Zurücknehmen, das durch einen Absturz oder Stromausfall unterbrochen wurde. Die Starthilfe meldet es aber auch, wenn ein Treiber eines Drittanbieters den Start verhindert – prüfen Sie deshalb auch die anderen Befunde in diesem Bericht.',
+    "last successful start: {info['last_successful_boot']}":
+        "letzter erfolgreicher Start: {info['last_successful_boot']}",
+    'repair attempts: {attempts}':
+        'Reparaturversuche: {attempts}',
+    'To start Safe Mode: on the Automatic Repair screen choose Advanced options → Troubleshoot → Advanced options → Startup Settings → Restart, then press 4 (Safe Mode) or 5 (Safe Mode with networking).':
+        'So starten Sie den abgesicherten Modus: Wählen Sie im Bildschirm „Automatische Reparatur“ „Erweiterte Optionen“ → „Problembehandlung“ → „Erweiterte Optionen“ → „Starteinstellungen“ → „Neu starten“ und drücken Sie dann 4 (abgesicherter Modus) oder 5 (abgesicherter Modus mit Netzwerktreibern).',
+    'To see what goes wrong in a normal start, open Startup Settings again and press 9 (“Disable automatic restart after failure”): a blue screen then stays on screen with its stop code. Pressing 2 (“Enable boot logging”) instead makes Windows write C:\\Windows\\ntbtlog.txt, which the next BootRepair analysis reads to show the last driver that loaded.':
+        'Um zu sehen, was beim normalen Start schiefgeht, öffnen Sie erneut die Starteinstellungen und drücken 9 („Automatischen Neustart bei Systemfehler deaktivieren“): Ein Bluescreen bleibt dann mit seinem Stoppcode stehen. Drücken Sie stattdessen 2 („Startprotokollierung aktivieren“), schreibt Windows die Datei C:\\Windows\\ntbtlog.txt; die nächste BootRepair-Analyse liest sie und zeigt den zuletzt geladenen Treiber.',
+    'normal start':
+        'normaler Start',
+    'Safe Mode':
+        'abgesicherter Modus',
+    'Safe Mode with networking':
+        'abgesicherter Modus mit Netzwerktreibern',
+    'Safe Mode loads only the drivers Windows itself needs. If Safe Mode works but a normal start fails, a third-party driver or program that loads at startup is the usual cause: antivirus software, backup and disk tools, or “PC repair” and tuning programs.':
+        'Der abgesicherte Modus lädt nur die Treiber, die Windows selbst braucht. Funktioniert er, der normale Start aber nicht, ist meist ein Treiber oder Programm eines Drittanbieters schuld, das beim Start geladen wird: Antivirensoftware, Sicherungs- und Festplattenwerkzeuge oder „PC-Reparatur“- und Tuning-Programme.',
+    'Since the last normal start on {normal.time:%Y-%m-%d %H:%M} UTC, Windows has only started in Safe Mode. ':
+        'Seit dem letzten normalen Start am {normal.time:%Y-%m-%d %H:%M} UTC ist Windows nur noch im abgesicherten Modus gestartet. ',
+    'The event log only records Safe Mode starts. ':
+        'Das Ereignisprotokoll verzeichnet nur Starts im abgesicherten Modus. ',
+    'Windows last started only in Safe Mode':
+        'Windows ist zuletzt nur im abgesicherten Modus gestartet',
+    'In Safe Mode, uninstall what was installed or updated shortly before the problem began, above all security software, backup or disk tools and “PC repair” or tuning programs. Then restart normally.':
+        'Deinstallieren Sie im abgesicherten Modus, was kurz vor Beginn des Problems installiert oder aktualisiert wurde, vor allem Sicherheitssoftware, Sicherungs- oder Festplattenwerkzeuge und „PC-Reparatur“- oder Tuning-Programme. Starten Sie danach normal neu.',
+    'Third-party drivers that Safe Mode skipped, so one of them is the most likely cause:':
+        'Treiber von Drittanbietern, die der abgesicherte Modus ausgelassen hat – einer davon ist die wahrscheinlichste Ursache:',
+    'Third-party drivers that load at every normal start:':
+        'Treiber von Drittanbietern, die bei jedem normalen Start geladen werden:',
+    'Several antivirus programs load at the same time: {names}':
+        'Mehrere Antivirenprogramme werden gleichzeitig geladen: {names}',
+    'Each of them hooks into every file access with its own file-system filter and early-launch driver. Antivirus vendors only support running alone: two real-time scanners can block each other while Windows starts, which shows up as hangs, freezes or crashes without a clear error.':
+        'Jedes davon klinkt sich mit einem eigenen Dateisystemfilter und Frühstart-Treiber in jeden Dateizugriff ein. Die Hersteller unterstützen nur den Betrieb allein: Zwei Echtzeitscanner können sich beim Windows-Start gegenseitig blockieren, was sich als Hänger, Einfrieren oder Absturz ohne klare Fehlermeldung zeigt.',
+    "In Safe Mode, remove one of them with the vendor's removal tool, which also works there (Avast: “Avast Uninstall Utility”, Bitdefender: “Bitdefender Uninstall Tool”). Keep one product, or none: Windows then switches Microsoft Defender back on.":
+        'Entfernen Sie im abgesicherten Modus eines davon mit dem Entfernungswerkzeug des Herstellers, das auch dort funktioniert (Avast: „Avast Uninstall Utility“, Bitdefender: „Bitdefender Uninstall Tool“). Behalten Sie ein Produkt – oder keines: Dann schaltet Windows den Microsoft Defender wieder ein.',
+    'unknown vendor':
+        'unbekannter Hersteller',
 }

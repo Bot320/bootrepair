@@ -148,6 +148,84 @@ def _fix_for(ctx, code):
 
 
 # ============================================================================ SrtTrail
+# SrtTrail.txt is written in the language of the Windows installation. Labels in English and German.
+SRT_LABELS = {
+    "session": ("Session details", "Sitzungsdetails"),
+    "last_boot": ("Last successful boot time", "Zeitpunkt des letzten erfolgreichen Starts"),
+    "attempts": ("Number of repair attempts", "Anzahl von Reparaturversuchen", "Anzahl der Reparaturversuche"),
+    "root_cause": ("Root cause found", "Gefundene Fehlerursache", "Fehlerursache gefunden"),
+    "repair_action": ("Repair action", "Reparaturaktion", "Reparaturvorgang"),
+    "result": ("Result", "Ergebnis"),
+    "no_cause": ("No root cause found", "Startup Repair cannot repair", "Keine Fehlerursache gefunden",
+                 "Es wurde keine Fehlerursache gefunden", "Die Starthilfe kann"),
+    "failed": ("Failed", "Fehler", "Fehlgeschlagen"),
+}
+
+# Kinds of Startup Repair root causes: (kind, stage, severity, words in English / German). First match wins.
+SRT_KINDS = [
+    ("serviced_binary", "winload", "critical", ("recently serviced boot binary", "kürzlich verarbeitete startbinärdatei",
+                                                "startbinärdatei")),
+    ("bugcheck", "kernel", "critical", ("bugcheck", "bug check", "fehlerprüfung")),
+    ("boot_file", "winload", "critical", ("boot critical file", "startkritische datei")),
+    ("bcd", "bcd", "critical", ("boot configuration", "bcd", "boot manager", "startkonfiguration", "start-manager")),
+    ("registry", "winload", "critical", ("registry", "registrierung")),
+    ("driver", "session", "critical", ("driver", "treiber")),
+    ("update", "session", "critical", ("patch", "update")),
+    ("disk", "disk", "critical", ("hard disk", "disk", "datenträger", "festplatte")),
+    ("unspecified", "general", "warning", ("unspecified changes", "nicht angegebene änderungen",
+                                           "unbekannte änderungen")),
+]
+
+
+def _alt(key):
+    return "|".join(re.escape(x) for x in SRT_LABELS[key])
+
+
+def srt_kind(cause):
+    """Classify a Startup Repair root cause (any supported language) -> (kind, stage, severity)."""
+    lc = cause.lower()
+    for kind, stage, sev, words in SRT_KINDS:
+        if any(w in lc for w in words):
+            return kind, stage, sev
+    if ("corrupt" in lc and "file" in lc) or ("beschädigt" in lc and "datei" in lc):
+        return "boot_file", "winload", "critical"
+    return "other", "general", "critical"
+
+
+def parse_srttrail(txt):
+    """Parse SrtTrail.txt (English or German). Windows caps the file at a few KB, so the last session is often
+    cut off: the root cause is taken from the newest session that reached one."""
+    info = {}
+    m = re.search(rf"(?:{_alt('last_boot')}):\s*(.+)", txt)
+    if m:
+        info["last_successful_boot"] = m.group(1).replace("‎", "").strip()
+    m = re.search(rf"(?:{_alt('attempts')}):\s*(\d+)", txt)
+    if m:
+        info["repair_attempts"] = int(m.group(1))
+    head = rf"(?m)^[ \t]*(?:{_alt('session')})[ \t]*\r?\n-{{5,}}"
+    starts = [m.start() for m in re.finditer(head, txt)]
+    sessions = [txt[a:b] for a, b in zip(starts, starts[1:] + [len(txt)])] or [txt]
+    info["sessions"] = len(sessions)
+    cause_re = re.compile(rf"(?:{_alt('root_cause')}):[ \t]*\r?\n-{{5,}}[ \t]*\r?\n(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n-{{5,}}|\r?\n(?:{_alt('repair_action')})|$)", re.S)
+    action_re = re.compile(rf"(?:{_alt('repair_action')}):[ \t]*(.+?)\r?\n(?:{_alt('result')}):[ \t]*(.+?)(?:\r?\n|$)")
+    chosen = None
+    for sess in reversed(sessions):
+        causes = []
+        for cm in cause_re.finditer(sess):
+            c = " ".join(cm.group(1).split())
+            if c and c not in causes:
+                causes.append(c)
+        no_cause = any(w.lower() in sess.lower() for w in SRT_LABELS["no_cause"])
+        if causes or no_cause:
+            chosen = (sess, causes)
+            break
+    sess, causes = chosen if chosen else (sessions[-1], [])
+    info["root_causes"] = causes
+    info["repair_actions"] = [f"{a.strip()}: {r.strip()}" for a, r in action_re.findall(sess)]
+    info["no_root_cause"] = not causes and any(w.lower() in sess.lower() for w in SRT_LABELS["no_cause"])
+    return info, sess
+
+
 def _srttrail(ctx):
     p = ctx.win_path("Windows\\System32\\LogFiles\\Srt\\SrtTrail.txt")
     if p is None:
@@ -157,64 +235,42 @@ def _srttrail(ctx):
     except OSError:
         return
     mt = _mtime(p)
-    sessions = [s for s in re.split(r"Startup Repair diagnosis and repair log", txt) if s.strip()]
-    last = sessions[-1] if sessions else txt
-    info = {"modified": mt.isoformat() if mt else "", "sessions": len(sessions)}
-    m = re.search(r"Last successful boot time:\s*(.+)", last)
-    if m:
-        info["last_successful_boot"] = m.group(1).strip()
-    m = re.search(r"Number of repair attempts:\s*(\d+)", last)
-    if m:
-        info["repair_attempts"] = int(m.group(1))
-    causes = []
-    for m in re.finditer(r"Root cause found:\s*\r?\n-+\r?\n(.*?)(?:\r?\n\s*\r?\n|\r?\nRepair action)", last, re.S):
-        c = " ".join(m.group(1).split())
-        if c and c not in causes:
-            causes.append(c)
-    actions = []
-    for m in re.finditer(r"Repair action:\s*(.+?)\r?\nResult:\s*(.+?)(?:\r?\n|$)", last):
-        actions.append(f"{m.group(1).strip()}: {m.group(2).strip()}")
-    info["root_causes"] = causes
-    info["repair_actions"] = actions
+    info, last = parse_srttrail(txt)
+    info["modified"] = mt.isoformat() if mt else ""
+    causes, actions = info["root_causes"], info["repair_actions"]
     ctx.evidence["srttrail"] = {"info": info, "text": last.strip()[-12000:]}
     ctx.srt_findings = []
     if not causes:
-        if "No root cause found" in last or "Startup Repair cannot repair" in last:
+        if info["no_root_cause"]:
             ctx.add("info", "general", _(t"Startup Repair ran but found no root cause"),
                     _(t"Windows' own Automatic Repair could not identify the problem."),
                     [f"SrtTrail.txt ({mt:%Y-%m-%d %H:%M} UTC)" if mt else "SrtTrail.txt"] + actions[:4], source=SRC)
         return
+    failed_words = tuple(w.lower() for w in SRT_LABELS["failed"])
     for c in causes:
-        lc = c.lower()
-        stage, sev = "general", "critical"
-        if "bugcheck" in lc:
-            stage = "kernel"
-        elif "boot critical file" in lc or "corrupt" in lc and "file" in lc:
-            stage = "winload"
-        elif "boot configuration" in lc or "bcd" in lc or "boot manager" in lc:
-            stage = "bcd"
-        elif "registry" in lc:
-            stage = "winload"
-        elif "patch" in lc or "update" in lc:
-            stage = "session"
-        elif "disk" in lc or "hard disk" in lc:
-            stage = "disk"
-        elif "unspecified changes" in lc:
-            stage, sev = "general", "warning"
-        f = ctx.add(sev, stage, _(t"Startup Repair root cause: {c}"),
-                    _(t"Windows' Automatic Repair analysed the failed start and named this as the cause.")
-                    + (_(t" It could not fix it.") if any("Failed" in a for a in actions) else ""),
+        kind, stage, sev = srt_kind(c)
+        why = _(t"Windows' Automatic Repair analysed the failed start and named this as the cause.")
+        if kind == "serviced_binary":
+            why += _(" It means that a Windows start file that was replaced recently (by an update, an update "
+                     "rollback or a repair) did not pass Windows' integrity check. This often follows an update or "
+                     "rollback interrupted by a crash or power loss. Startup Repair also reports it when a "
+                     "third-party driver stops the start, so check the other findings in this report as well.")
+        if any(a.split(": ", 1)[-1].lower().startswith(failed_words) for a in actions):
+            why += _(" It could not fix it.")
+        attempts = info.get("repair_attempts")
+        f = ctx.add(sev, stage, _(t"Startup Repair root cause: {c}"), why,
                     [f"SrtTrail.txt, written {mt:%Y-%m-%d %H:%M} UTC" if mt else "SrtTrail.txt",
-                     *(f"{k.replace('_', ' ')}: {v}" for k, v in info.items() if k in ("last_successful_boot", "repair_attempts")),
+                     *([_(t"last successful start: {info['last_successful_boot']}")] if info.get("last_successful_boot") else []),
+                     *([_(t"repair attempts: {attempts}")] if attempts is not None else []),
                      *actions[:6]],
-                    _srt_fix(ctx, lc), source=SRC, priority=7)
-        f.cause_text = lc            # raw (English) Startup Repair wording, used by the verdict logic
+                    _srt_fix(ctx, kind, c), source=SRC, priority=7)
+        f.cause_kind = kind          # language-independent; used by the verdict logic
         ctx.srt_findings.append((f, mt))
 
 
-def _srt_fix(ctx, lc):
-    if "boot critical file" in lc:
-        m = re.search(r"file (.+?) is corrupt", lc)
+def _srt_fix(ctx, kind, cause):
+    if kind == "boot_file":
+        m = re.search(r"(?:file|datei) (.+?) (?:is corrupt|ist beschädigt)", cause, re.I)
         steps = repair_steps()
         if m:
             named = m.group(1)
@@ -222,14 +278,16 @@ def _srt_fix(ctx, lc):
                               t"Microsoft), look for the matching driver finding in this report: disabling the driver "
                               t"is enough."))
         return steps
-    if "boot configuration" in lc or "bcd" in lc:
+    if kind == "serviced_binary":
+        return [WINRE, CHKDSK] + repair_steps()[1:] + [UNINSTALL_UPDATES]
+    if kind == "bcd":
         from .bootpart import bcdboot_fix
         return bcdboot_fix(ctx)
-    if "registry" in lc:
+    if kind == "registry":
         return _restore_steps(ctx, "SYSTEM")
-    if "patch" in lc or "update" in lc:
+    if kind in ("update", "driver"):
         return [WINRE, REVERT_PENDING, UNINSTALL_UPDATES]
-    if "bugcheck" in lc:
+    if kind == "bugcheck":
         return _fix_for(ctx, 0)
     return [WINRE, SYSTEM_RESTORE]
 

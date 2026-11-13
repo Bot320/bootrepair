@@ -28,7 +28,7 @@ def correlate(ctx):
     # Startup Repair blames a driver update and driver files are still waiting to be swapped.
     pr = getattr(ctx, "pending_renames_finding", None)
     if pr is not None and getattr(ctx, "pending_driver_renames", 0):
-        blamed = [f for f, __ in ctx.srt_findings if "driver" in getattr(f, "cause_text", "")]
+        blamed = [f for f, __ in ctx.srt_findings if getattr(f, "cause_kind", "") == "driver"]
         if blamed:
             pr.severity = "critical"
             pr.priority = 12
@@ -42,15 +42,13 @@ def correlate(ctx):
     if pr is not None and getattr(ctx, "pending_driver_renames", 0):
         related += pr.actions
     for f, __ in ctx.srt_findings:
-        t = getattr(f, "cause_text", "")
-        if related and ("driver" in t or "update" in t or "patch" in t):
+        if related and getattr(f, "cause_kind", "") in ("driver", "update"):
             f.actions = f.actions + [a for a in related if a not in f.actions]
 
     # Startup Repair blamed an update/driver change, but nothing of it is pending any more (e.g. after a repair)
     nothing_pending = ctx.pending_xml is None and not getattr(ctx, "pending_driver_renames", 0)
     for f, __ in ctx.srt_findings:
-        t = getattr(f, "cause_text", "")
-        if nothing_pending and f.severity == "critical" and ("driver update" in t or "patch" in t or "update" in t):
+        if nothing_pending and f.severity == "critical" and getattr(f, "cause_kind", "") in ("driver", "update"):
             f.severity = "warning"
             f.why += _(" No pending update or driver file operations are left on the disk now, so the change it "
                        "refers to has been undone or cleared. If Windows still fails, run Startup Repair once more.")
