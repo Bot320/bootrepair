@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=BootRepair
+GenericName=Windows Startup Repair
+GenericName[de]=Windows-Startreparatur
+Comment=Find out why Windows does not start and fix it
+Comment[de]=Herausfinden, warum Windows nicht startet, und es reparieren
+Exec=bootrepair
+Icon=io.github.bootrepair
+Terminal=false
+Type=Application
+Categories=GTK;System;Utility;
+Keywords=windows;boot;startup;repair;bcd;bluescreen;bsod;bootmgr;
+Keywords[de]=windows;start;systemstart;reparatur;bcd;bluescreen;bootmgr;
+StartupNotify=true

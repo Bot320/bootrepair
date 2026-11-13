@@ -1,0 +1,64 @@
+/* ---------------------------------------------------------------- verdict */
+.verdict-card {
+  padding: 20px 22px;
+  border-radius: 14px;
+}
+.verdict-fail { background-color: alpha(@error_color, 0.12); }
+.verdict-warn { background-color: alpha(@warning_color, 0.13); }
+.verdict-ok { background-color: alpha(@success_color, 0.13); }
+.verdict-incomplete { background-color: alpha(@accent_color, 0.11); }
+.verdict-fail .verdict-icon { color: @error_color; }
+.verdict-warn .verdict-icon { color: @warning_color; }
+.verdict-ok .verdict-icon { color: @success_color; }
+.verdict-incomplete .verdict-icon { color: @accent_color; }
+
+/* ---------------------------------------------------------------- boot chain strip */
+.chain-seg { padding: 2px 0; }
+.chain-bar {
+  min-height: 6px;
+  border-radius: 3px;
+  background-color: alpha(currentColor, 0.15);
+}
+.chain-ok .chain-bar { background-color: @success_color; }
+.chain-warn .chain-bar { background-color: @warning_color; }
+.chain-fail .chain-bar { background-color: @error_color; min-height: 8px; }
+.chain-fail label, .chain-fail image { color: @error_color; font-weight: bold; }
+.chain-warn image { color: @warning_color; }
+.chain-unknown { opacity: 0.55; }
+
+/* ---------------------------------------------------------------- severities & tags */
+.sev-icon-critical, .sev-text-critical { color: @error_color; }
+.sev-icon-warning, .sev-text-warning { color: @warning_color; }
+.sev-icon-info, .sev-text-info { color: @accent_color; }
+
+.tag {
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+.tag-esp { background-color: alpha(currentColor, 0.10); }
+.tag-stop { background-color: alpha(@error_color, 0.14); color: @error_color; }
+.risk-low { background-color: alpha(@success_color, 0.16); color: @success_color; }
+.risk-medium { background-color: alpha(@warning_color, 0.18); color: @warning_color; }
+.risk-high { background-color: alpha(@error_color, 0.16); color: @error_color; }
+
+/* ---------------------------------------------------------------- instructions */
+.step-num {
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 99px;
+  font-size: 0.85em;
+  font-weight: bold;
+  background-color: alpha(@accent_color, 0.15);
+  color: @accent_color;
+}
+.code-block {
+  padding: 8px 6px 8px 12px;
+  border-radius: 8px;
+  background-color: alpha(currentColor, 0.07);
+}
+.mono { font-family: monospace; font-size: 0.93em; }
+.repair-card, .guide-card { padding: 16px 18px; }
+.repair-card { background-color: alpha(@accent_color, 0.08); }
+.evidence-expander > title { font-weight: bold; }

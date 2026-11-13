@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#62a0ea"/>
+      <stop offset="1" stop-color="#3584e4"/>
+    </linearGradient>
+    <linearGradient id="plaster" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffcf8a"/>
+      <stop offset="1" stop-color="#f8b765"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6f5f4"/>
+      <stop offset="1" stop-color="#deddda"/>
+    </linearGradient>
+  </defs>
+  <!-- tile with depth -->
+  <rect x="12" y="18" width="104" height="98" rx="22" fill="#1a5fb4"/>
+  <rect x="12" y="12" width="104" height="98" rx="22" fill="url(#face)"/>
+  <rect x="12.5" y="12.5" width="103" height="97" rx="21.5" fill="none" stroke="#ffffff" stroke-opacity="0.18"/>
+  <!-- power symbol -->
+  <path d="M 47.5 39 A 26 26 0 1 0 80.5 39" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+  <line x1="64" y1="27" x2="64" y2="57" stroke="#ffffff" stroke-width="9" stroke-linecap="round"/>
+  <!-- plaster -->
+  <clipPath id="tile"><rect x="12" y="12" width="104" height="98" rx="22"/></clipPath>
+  <g clip-path="url(#tile)">
+    <g transform="rotate(-38 82 80)">
+      <rect x="51" y="72" width="62" height="24" rx="12" fill="#1a5fb4" opacity="0.45"/>
+    </g>
+  </g>
+  <g transform="rotate(-38 82 76)">
+    <rect x="51" y="64" width="62" height="24" rx="12" fill="url(#plaster)" stroke="#e66100" stroke-width="2"/>
+    <rect x="72" y="66" width="20" height="20" rx="4" fill="url(#pad)" stroke="#c0bfbc" stroke-width="1"/>
+    <g fill="#e66100" opacity="0.55">
+      <circle cx="59" cy="72" r="1.5"/><circle cx="65" cy="72" r="1.5"/><circle cx="59" cy="80" r="1.5"/><circle cx="65" cy="80" r="1.5"/>
+      <circle cx="99" cy="72" r="1.5"/><circle cx="105" cy="72" r="1.5"/><circle cx="99" cy="80" r="1.5"/><circle cx="105" cy="80" r="1.5"/>
+    </g>
+  </g>
+</svg>

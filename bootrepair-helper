@@ -1,0 +1,14 @@
+#!/usr/bin/python3 -I
+# BootRepair - privileged analysis backend (read-only).
+import os
+import sys
+
+_here = os.path.dirname(os.path.realpath(__file__))
+for _base in (_here, "/usr/lib/bootrepair"):
+    if os.path.isdir(os.path.join(_base, "bootrepair")):
+        sys.path.insert(0, _base)
+        break
+
+from bootrepair.helper import main  # noqa: E402
+
+sys.exit(main())
